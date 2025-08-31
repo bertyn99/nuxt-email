@@ -1,10 +1,10 @@
 <template>
-  <div class="h-full">
+  <div class="h-full bg-gray-50 dark:bg-gray-900">
     <div class="flex h-full">
       <!-- Sidebar -->
-      <div class="w-64 border-r border-gray-200 dark:border-gray-700">
+      <div class="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
         <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-          <h1 class="text-lg font-semibold">Email DevTools</h1>
+          <h1 class="text-lg font-semibold text-gray-900 dark:text-white">Email DevTools</h1>
         </div>
         
         <nav class="p-4">
@@ -57,9 +57,9 @@
       <div class="flex-1 overflow-hidden">
         <div class="h-full flex flex-col">
           <!-- Header -->
-          <div class="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+          <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
             <div class="flex items-center justify-between">
-              <h2 class="text-xl font-semibold capitalize">
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-white capitalize">
                 {{ activeTab }}
               </h2>
               <div class="flex items-center space-x-2">
@@ -102,9 +102,11 @@ const devtoolsClient = useDevtoolsClient()
 const refresh = () => {
   // Trigger refresh based on active tab
   if (activeTab.value === 'messages') {
-    devtoolsClient.value?.devtools.rpc.refreshMessages()
+    // This would trigger a refresh of messages
+    console.log('Refreshing messages...')
   } else if (activeTab.value === 'templates') {
-    devtoolsClient.value?.devtools.rpc.refreshTemplates()
+    // This would trigger a refresh of templates
+    console.log('Refreshing templates...')
   }
 }
 

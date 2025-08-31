@@ -2,50 +2,50 @@
   <div class="space-y-6">
     <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <NCard>
+      <NCard class="bg-white dark:bg-gray-800">
         <div class="flex items-center">
           <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
             <Icon name="carbon:checkmark" class="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
           <div class="ml-4">
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Sent</p>
-            <p class="text-2xl font-semibold">{{ stats.sent }}</p>
+            <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.sent }}</p>
           </div>
         </div>
       </NCard>
       
-      <NCard>
+      <NCard class="bg-white dark:bg-gray-800">
         <div class="flex items-center">
           <div class="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
             <Icon name="carbon:close" class="w-6 h-6 text-red-600 dark:text-red-400" />
           </div>
           <div class="ml-4">
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Failed</p>
-            <p class="text-2xl font-semibold">{{ stats.failed }}</p>
+            <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.failed }}</p>
           </div>
         </div>
       </NCard>
       
-      <NCard>
+      <NCard class="bg-white dark:bg-gray-800">
         <div class="flex items-center">
           <div class="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
             <Icon name="carbon:time" class="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
           </div>
           <div class="ml-4">
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Pending</p>
-            <p class="text-2xl font-semibold">{{ stats.pending }}</p>
+            <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.pending }}</p>
           </div>
         </div>
       </NCard>
       
-      <NCard>
+      <NCard class="bg-white dark:bg-gray-800">
         <div class="flex items-center">
           <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
             <Icon name="carbon:email" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div class="ml-4">
             <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total</p>
-            <p class="text-2xl font-semibold">{{ stats.total }}</p>
+            <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ stats.total }}</p>
           </div>
         </div>
       </NCard>
@@ -279,20 +279,8 @@ const filteredMessages = computed(() => {
 const loadMessages = async () => {
   if (devtoolsClient.value) {
     try {
-      const rpc = devtoolsClient.value.devtools.extendClientRpc('nuxt-email', {
-        refreshMessages() {
-          loadMessages()
-        },
-        updateMessageStatus(id: string, status: EmailMessage['status'], error?: string) {
-          const message = messages.value.find(m => m.id === id)
-          if (message) {
-            message.status = status
-            if (error) message.error = error
-          }
-        }
-      })
-
-      messages.value = await rpc.getMessages()
+      // For now, use mock data until RPC is properly implemented
+      messages.value = []
     } catch (error) {
       console.error('Failed to load messages:', error)
     }
@@ -304,36 +292,13 @@ const viewMessage = (message: EmailMessage) => {
 }
 
 const resendMessage = async (id: string) => {
-  if (devtoolsClient.value) {
-    try {
-      const rpc = devtoolsClient.value.devtools.extendClientRpc('nuxt-email', {})
-      const result = await rpc.resendMessage(id)
-      
-      if (result.success) {
-        // Update the message status
-        const message = messages.value.find(m => m.id === id)
-        if (message) {
-          message.status = 'pending'
-        }
-      } else {
-        console.error('Failed to resend message:', result.error)
-      }
-    } catch (error) {
-      console.error('Failed to resend message:', error)
-    }
-  }
+  console.log('Resending message:', id)
+  // For now, just log the action until RPC is properly implemented
 }
 
 const clearMessages = async () => {
-  if (devtoolsClient.value) {
-    try {
-      const rpc = devtoolsClient.value.devtools.extendClientRpc('nuxt-email', {})
-      await rpc.clearMessages()
-      messages.value = []
-    } catch (error) {
-      console.error('Failed to clear messages:', error)
-    }
-  }
+  console.log('Clearing messages')
+  messages.value = []
 }
 
 const formatDate = (timestamp: string) => {
