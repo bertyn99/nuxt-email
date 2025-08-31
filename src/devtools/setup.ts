@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import type { Nuxt } from 'nuxt/schema'
+import type { Nitro } from 'nitropack'
 import type { Resolver } from '@nuxt/kit'
 import { useNuxt } from '@nuxt/kit'
 import { extendServerRpc, onDevToolsInitialized, addCustomTab } from '@nuxt/devtools-kit'
@@ -7,10 +8,10 @@ import type { ModuleOptions } from '../module'
 import type { ClientFunctions, ServerFunctions } from '../rpc-types'
 
 const DEVTOOLS_UI_ROUTE = '/__nuxt-email'
-const DEVTOOLS_UI_LOCAL_PORT = 3031
+const DEVTOOLS_UI_LOCAL_PORT = 3030
 
 export function setupDevToolsUI(options: ModuleOptions, resolve: Resolver['resolve'], nuxt: Nuxt = useNuxt()) {
-  const clientPath = resolve('./devtools/client')
+  const clientPath = resolve('./client')
   const isProductionBuild = existsSync(clientPath)
 
   // Serve production-built client (used when package is published)
@@ -36,10 +37,14 @@ export function setupDevToolsUI(options: ModuleOptions, resolve: Resolver['resol
       }
     })
   }
+  const useNitro = new Promise<Nitro>((resolve) => {
+    nuxt.hooks.hook('nitro:init', resolve)
+  })
 
   // wait for DevTools to be initialized
   onDevToolsInitialized(async () => {
     const rpc = extendServerRpc<ClientFunctions, ServerFunctions>('nuxt-email', {
+
       async getMessages() {
         // This will be implemented to fetch messages from the devCatcher or other storage
         return []
