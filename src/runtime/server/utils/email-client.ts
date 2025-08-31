@@ -123,7 +123,7 @@ export const createEmailClient = (
       }
     }
 
-    await hooks.emit('email:beforeRender', { message: normalized, context: { now: Date.now() } } as any)
+    await hooks.emit('email:beforeRender', { message: normalized, context: { now: Date.now() } } as unknown as Parameters<HookBus['emit']>[1])
 
     let renderResult: RenderData | undefined
     if (message.template) {
@@ -135,7 +135,7 @@ export const createEmailClient = (
 
     const finalMessage = mergeRenderResult(normalized, renderResult)
 
-    await hooks.emit('email:afterRender', { message: finalMessage, context: { now: Date.now() } } as any)
+    await hooks.emit('email:afterRender', { message: finalMessage, context: { now: Date.now() } } as unknown as Parameters<HookBus['emit']>[1])
 
     const selected = selectProviders(
       (config.strategy?.mode || 'primary-fallback') as StrategyMode,
@@ -152,14 +152,14 @@ export const createEmailClient = (
       const result = await sendWithRetries(adapter as { send: (m: NormalizedEmailMessage) => Promise<Result<ProviderSendResult>> }, finalMessage, config.strategy?.retries || { maxAttempts: 1, backoffMs: 1 })
       if (result.success) {
         recordSuccess(name as string)
-        await hooks.emit('email:afterSend', { message: finalMessage, context: { now: Date.now() }, provider: name as string, result: result.data } as any)
+        await hooks.emit('email:afterSend', { message: finalMessage, context: { now: Date.now() }, provider: name as string, result: result.data } as unknown as Parameters<HookBus['emit']>[1])
         return result
       }
       recordFailure(name as string)
     }
 
     const error = new Error('All providers failed')
-    await hooks.emit('email:error', { message: finalMessage, error, attempts: selected.length, context: { now: Date.now() } } as any)
+    await hooks.emit('email:error', { message: finalMessage, error, attempts: selected.length as unknown as number, context: { now: Date.now() } } as unknown as Parameters<HookBus['emit']>[1])
     return { success: false, error }
   } }
 }

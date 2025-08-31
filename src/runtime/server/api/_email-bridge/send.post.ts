@@ -2,6 +2,7 @@ import { defineEventHandler, readBody } from 'h3'
 import { createEmailClient } from '../../utils/email-client'
 import { createProviderRegistry } from '../../utils/provider-registry'
 import { createHookBus } from '../../utils/hook-bus'
+import { createDevCatcherProvider } from '../../providers/dev-catcher'
 
 export default defineEventHandler(async (event) => {
   const payload = await readBody(event)
@@ -9,6 +10,7 @@ export default defineEventHandler(async (event) => {
   // Minimal runtime wiring for now: single devCatcher provider if enabled
   const hooks = createHookBus()
   const providers = createProviderRegistry()
+    .addProvider('devCatcher', createDevCatcherProvider({ enabled: true }))
 
   const email = createEmailClient(
     {
@@ -23,5 +25,3 @@ export default defineEventHandler(async (event) => {
   const res = await email.send(payload)
   return res
 })
-
-

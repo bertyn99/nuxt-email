@@ -2,9 +2,14 @@ import type { NormalizedEmailMessage, ProviderSendResult } from '../utils/email-
 
 type Result<T, E = Error> = { success: true, data: T } | { success: false, error: E }
 
+export interface BrevoClient {
+  setApiKey: (key: string) => void
+  sendTransacEmail: (payload: Record<string, unknown>) => Promise<{ messageId: string }>
+}
+
 export interface BrevoConfig {
   apiKey: string
-  createClient?: () => { setApiKey: (k: string) => void, sendTransacEmail: (payload: any) => Promise<{ messageId: string }> }
+  createClient?: () => BrevoClient
 }
 
 export interface ProviderAdapter {
@@ -16,7 +21,13 @@ export interface ProviderAdapter {
 export const createBrevoProvider = (config: BrevoConfig): ProviderAdapter => {
   const factory = config.createClient || (() => {
     const Sib = require('@sendinblue/client')
-    return new Sib.TransactionalEmailsApi()
+    const api = new Sib.TransactionalEmailsApi()
+    // Adapt to our narrowed interface
+    const client: BrevoClient = {
+      setApiKey: (key: string) => api.setApiKey('api-key', key),
+      sendTransacEmail: payload => api.sendTransacEmail(payload as any),
+    }
+    return client
   })
 
   return {
@@ -26,8 +37,8 @@ export const createBrevoProvider = (config: BrevoConfig): ProviderAdapter => {
       const start = Date.now()
       try {
         const api = factory()
-        api.setApiKey('api-key', config.apiKey)
-        const payload: any = {
+        api.setApiKey(config.apiKey)
+        const payload: Record<string, unknown> = {
           sender: { email: (typeof message.from === 'string' ? message.from : message.from.email) },
           to: (Array.isArray(message.to) ? message.to : [message.to]).map((t: any) => ({ email: typeof t === 'string' ? t : t.email })),
           subject: message.subject,

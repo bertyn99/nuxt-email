@@ -19,7 +19,7 @@ describe('EmailClient circuit breaker', () => {
     const email = createEmailClient({
       defaults: { from: 'a@example.com', headers: {} },
       strategy: { mode: 'primary-fallback', retries: { maxAttempts: 1, backoffMs: 1 } },
-      circuitBreaker: { failureThreshold: 2, cooldownMs: 10 },
+      circuitBreaker: { failureThreshold: 2, cooldownMs: 1000 },
     } as any, providers, { renderTemplate: async () => ({ success: true, data: { html: '', text: '', subject: '' } }) } as any, hooks)
 
     const r1 = await email.send({ to: 'b@example.com', subject: 'x' } as any)

@@ -2,21 +2,33 @@ import { describe, it, expect, vi } from 'vitest'
 
 import { createBrevoProvider } from '../src/runtime/server/providers/brevo'
 
+type SendInput = {
+  from: string
+  to: string
+  subject: string
+  html?: string
+  text?: string
+  headers?: Record<string, string>
+}
+
 describe('Brevo provider', () => {
   it('maps normalized message to Brevo API and returns result', async () => {
     const sendTransacEmail = vi.fn(async (_payload: Record<string, unknown>) => ({ messageId: 'br_123' }))
-    const client = { setApiKey: vi.fn(), sendTransacEmail } as { setApiKey: (k: string, v: string) => void, sendTransacEmail: (p: Record<string, unknown>) => Promise<{ messageId: string }> }
+    const client = { setApiKey: vi.fn(), sendTransacEmail } as { setApiKey: (k: string) => void, sendTransacEmail: (p: Record<string, unknown>) => Promise<{ messageId: string }> }
     const createClient = vi.fn(() => client)
 
     const provider = createBrevoProvider({ apiKey: 'key', createClient })
 
-    const res = await provider.send({
+    const input: SendInput = {
       from: 'a@example.com',
       to: 'b@example.com',
       subject: 'Hello',
       html: '<p>Hi</p>',
       text: 'Hi',
-    }) as unknown as Parameters<typeof provider.send>[0]
+      headers: {},
+    }
+
+    const res = await provider.send(input as unknown as Parameters<typeof provider.send>[0])
 
     expect(createClient).toHaveBeenCalled()
     expect(client.setApiKey).toHaveBeenCalledWith('key')
