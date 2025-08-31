@@ -1,10 +1,11 @@
 import type { HookBus } from './hook-bus'
 import type { ProviderRegistry } from './provider-registry'
-import { selectProviders } from './strategy'
+import { selectProviders, type StrategyMode } from './strategy'
 
-export type EmailAddress = string | { name?: string; email: string }
+export type EmailAddress = string | { name?: string, email: string }
 
 export type EmailMessage<TData = unknown> = {
+  from?: EmailAddress
   to: EmailAddress | EmailAddress[]
   cc?: EmailAddress | EmailAddress[]
   bcc?: EmailAddress | EmailAddress[]
@@ -37,7 +38,7 @@ export type NormalizedEmailMessage = {
     path?: string
     contentType?: string
   }>
-  meta?: { template?: string; correlationId?: string }
+  meta?: { template?: string, correlationId?: string }
 }
 
 export type ProviderSendResult = {
@@ -49,28 +50,82 @@ export type ProviderSendResult = {
   meta?: Record<string, unknown>
 }
 
-export type Result<T, E = Error> =
-  | { success: true; data: T }
-  | { success: false; error: E }
+export type Result<T, E = Error>
+  = | { success: true, data: T }
+    | { success: false, error: E }
 
-type RetryConfig = { maxAttempts: number; backoffMs: number; jitter?: boolean }
+type RetryConfig = { maxAttempts: number, backoffMs: number, jitter?: boolean }
 
 export interface EmailClient {
   send: (message: EmailMessage) => Promise<Result<ProviderSendResult>>
 }
 
+type RenderData = { html?: string, text?: string, subject?: string }
+
+type EmailClientConfig = {
+  defaults?: { from?: EmailAddress, headers?: Record<string, string> }
+  strategy?: { mode?: StrategyMode, weights?: Record<string, number>, retries?: RetryConfig }
+  security?: { allowlistDomains?: string[] }
+  limits?: { maxRecipients?: number }
+  circuitBreaker?: { failureThreshold: number, cooldownMs: number }
+}
+
 export const createEmailClient = (
-  config: any,
+  config: EmailClientConfig,
   providers: ProviderRegistry,
-  templates: any,
+  templates: { renderTemplate: (name: string, data: unknown) => Promise<Result<RenderData>> },
   hooks: HookBus,
-): EmailClient => ({
-  send: async (message) => {
+): EmailClient => {
+  const circuit = new Map<string, { state: 'closed' | 'open', failureCount: number, openedAt?: number }>()
+  const cb = config.circuitBreaker || { failureThreshold: Infinity, cooldownMs: 0 }
+
+  const isOpen = (name: string) => {
+    const s = circuit.get(name)
+    if (!s || s.state !== 'open') return false
+    return typeof s.openedAt === 'number' && (Date.now() - s.openedAt) < cb.cooldownMs
+  }
+  const recordSuccess = (name: string) => {
+    circuit.set(name, { state: 'closed', failureCount: 0 })
+  }
+  const recordFailure = (name: string) => {
+    const prev = circuit.get(name) || { state: 'closed', failureCount: 0 as number }
+    const failureCount = prev.failureCount + 1
+    if (failureCount >= cb.failureThreshold) circuit.set(name, { state: 'open', failureCount, openedAt: Date.now() })
+    else circuit.set(name, { state: prev.state, failureCount, openedAt: prev.openedAt })
+  }
+
+  return { send: async (message: EmailMessage) => {
     const normalized = normalizeMessage(message, config.defaults || {})
+
+    // Policy: allowlist domains (non-prod by plan, but simple here)
+    if (config.security && Array.isArray(config.security.allowlistDomains) && config.security.allowlistDomains.length > 0) {
+      const toArray = (v?: EmailAddress | EmailAddress[]): EmailAddress[] => v ? (Array.isArray(v) ? v : [v]) : []
+      const flatten = (r: EmailAddress): string => typeof r === 'string' ? r : r.email
+      const all: EmailAddress[] = [...toArray(normalized.to), ...toArray(normalized.cc), ...toArray(normalized.bcc)]
+      const ok = all.every((addr) => {
+        const email = flatten(addr)
+        const domain = String(email.split('@')[1] || '')
+        return (config.security as { allowlistDomains?: string[] }).allowlistDomains?.includes(domain)
+      })
+      if (!ok) {
+        return { success: false, error: new Error('Recipient domain not allowed') }
+      }
+    }
+
+    // Policy: recipient limits
+    if (config.limits?.maxRecipients) {
+      const toCount = Array.isArray(normalized.to) ? normalized.to.length : 1
+      const ccCount = Array.isArray(normalized.cc) ? normalized.cc.length : 0
+      const bccCount = Array.isArray(normalized.bcc) ? normalized.bcc.length : 0
+      const total = toCount + ccCount + bccCount
+      if (total > config.limits.maxRecipients) {
+        return { success: false, error: new Error('Too many recipients') }
+      }
+    }
 
     await hooks.emit('email:beforeRender', { message: normalized, context: { now: Date.now() } } as any)
 
-    let renderResult: { html?: string; text?: string; subject?: string } | undefined
+    let renderResult: RenderData | undefined
     if (message.template) {
       const render = await templates.renderTemplate(message.template, message.data)
       if (!render.success)
@@ -83,31 +138,34 @@ export const createEmailClient = (
     await hooks.emit('email:afterRender', { message: finalMessage, context: { now: Date.now() } } as any)
 
     const selected = selectProviders(
-      config.strategy?.mode || 'primary-fallback',
-      providers.listProviders() as any,
+      (config.strategy?.mode || 'primary-fallback') as StrategyMode,
+      providers.listProviders().map(String),
       config.strategy?.weights,
     )
 
     for (const name of selected) {
-      const adapter = providers.getProvider(name as any)
+      if (isOpen(name as string)) continue
+      const adapter = providers.getProvider(name as string)
       if (!adapter)
         continue
 
-      const result = await sendWithRetries(adapter as any, finalMessage, config.strategy?.retries || { maxAttempts: 1, backoffMs: 1 })
+      const result = await sendWithRetries(adapter as { send: (m: NormalizedEmailMessage) => Promise<Result<ProviderSendResult>> }, finalMessage, config.strategy?.retries || { maxAttempts: 1, backoffMs: 1 })
       if (result.success) {
-        await hooks.emit('email:afterSend', { message: finalMessage, context: { now: Date.now() }, provider: name as any, result: result.data } as any)
+        recordSuccess(name as string)
+        await hooks.emit('email:afterSend', { message: finalMessage, context: { now: Date.now() }, provider: name as string, result: result.data } as any)
         return result
       }
+      recordFailure(name as string)
     }
 
     const error = new Error('All providers failed')
     await hooks.emit('email:error', { message: finalMessage, error, attempts: selected.length, context: { now: Date.now() } } as any)
     return { success: false, error }
-  },
-})
+  } }
+}
 
-const normalizeMessage = (message: EmailMessage, defaults: any): NormalizedEmailMessage => ({
-  from: (message as any).from || defaults.from,
+const normalizeMessage = (message: EmailMessage, defaults: { from?: EmailAddress, headers?: Record<string, string> }): NormalizedEmailMessage => ({
+  from: message.from ?? defaults.from!,
   to: message.to,
   cc: message.cc,
   bcc: message.bcc,
@@ -121,7 +179,7 @@ const normalizeMessage = (message: EmailMessage, defaults: any): NormalizedEmail
 
 const mergeRenderResult = (
   message: NormalizedEmailMessage,
-  render?: { html?: string; text?: string; subject?: string },
+  render?: RenderData,
 ): NormalizedEmailMessage => ({
   ...message,
   html: render?.html || message.html,
@@ -134,18 +192,16 @@ const sendWithRetries = async (
   message: NormalizedEmailMessage,
   retry: RetryConfig,
 ): Promise<Result<ProviderSendResult>> => {
-  let lastError: any
+  let lastError: Error | undefined
   for (let attempt = 1; attempt <= retry.maxAttempts; attempt++) {
     const res = await provider.send(message)
-    if ((res as any).success)
-      return res as any
-    lastError = (res as any).error
+    if (res.success)
+      return res
+    lastError = res.error
     if (attempt < retry.maxAttempts) {
       const delay = retry.backoffMs * Math.pow(2, attempt - 1)
       await new Promise(r => setTimeout(r, delay))
     }
   }
-  return { success: false, error: lastError }
+  return { success: false, error: lastError! }
 }
-
-
