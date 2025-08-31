@@ -4,8 +4,10 @@ import { createProviderRegistry } from '../utils/provider-registry'
 import { buildProvidersFromConfig } from '../utils/provider-factory'
 import { createTemplateRegistry } from '../utils/template-registry'
 
-export default (nitroApp: any) => {
+export default (nitroApp: { options?: { runtimeConfig?: { email?: Record<string, unknown> } }, hooks: { hook: (event: string, handler: (event: { context: Record<string, unknown> }) => void) => void } }) => {
   const runtimeEmail = (nitroApp?.options?.runtimeConfig?.email) || {}
+
+  console.log('Email plugin - runtime config:', JSON.stringify(runtimeEmail, null, 2))
 
   const hooks = createHookBus()
   const registry = createProviderRegistry()
@@ -17,13 +19,12 @@ export default (nitroApp: any) => {
     strategy: runtimeEmail.strategy,
     security: runtimeEmail.security,
     limits: runtimeEmail.limits,
-    circuitBreaker: runtimeEmail.strategy?.circuitBreaker,
-  } as any, providers, templates as any, hooks)
+    circuitBreaker: (runtimeEmail.strategy as any)?.circuitBreaker,
+  } as any, providers, templates, hooks)
 
   // Expose on nitro event context for server-side usage
-  nitroApp.hooks.hook('request', (event: any) => {
+  nitroApp.hooks.hook('request', (event: { context: Record<string, unknown> }) => {
     // attach per-request
-    // @ts-expect-error custom field
     event.context.$email = email
   })
 }

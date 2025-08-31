@@ -7,8 +7,10 @@ import { createMailgunProvider } from '../providers/mailgun'
 import { createBrevoProvider } from '../providers/brevo'
 
 export const buildProvidersFromConfig = (registry: ProviderRegistry, providersConfig: any) => {
+  console.log('Provider factory - config:', JSON.stringify(providersConfig, null, 2))
   let r = registry
   if (providersConfig?.devCatcher?.enabled) {
+    console.log('Adding devCatcher provider')
     r = r.addProvider('devCatcher', createDevCatcherProvider({ enabled: true }))
   }
   if (providersConfig?.smtp) {

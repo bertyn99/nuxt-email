@@ -37,6 +37,31 @@ npx nuxi module add my-module
 
 That's it! You can now use My Module in your Nuxt app ✨
 
+## Environment Variables
+
+The module supports extensive configuration via environment variables. Copy `env.example` to `.env` and configure your email providers:
+
+```bash
+# Required
+EMAIL_FROM=noreply@yourdomain.com
+NODE_ENV=development
+
+# Optional provider API keys
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+MAILGUN_API_KEY=key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+MAILGUN_DOMAIN=mg.yourdomain.com
+BREVO_API_KEY=xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# SMTP (optional)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+```
+
+See `env.example` for a complete list of all available environment variables.
+
 ## Usage (Email)
 
 1) Configure the module in `nuxt.config`:
@@ -75,6 +100,57 @@ await email.send({ to: 'user@example.com', subject: 'Hello', html: '<p>Hi</p>' }
 
 Policies (non-prod allowlist and recipient limits) are enforced on the server via module configuration.
 
+
+## Development & Testing
+
+### Playground Setup
+
+For local development and testing:
+
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Setup environment variables**
+   ```bash
+   # Copy example files
+   cp env.example .env
+   cp playground/.env.example playground/.env
+   
+   # Edit playground/.env with your test values
+   ```
+
+3. **Start development**
+   ```bash
+   npm run dev:prepare
+   npm run dev
+   ```
+
+4. **Test the module**
+   - Open http://localhost:3000
+   - Use the playground UI to send test emails
+   - Check the DevTools tab for email management
+
+### Available Scripts
+
+```bash
+# Development
+npm run dev:prepare    # Generate type stubs and prepare playground
+npm run dev           # Start development server with playground
+npm run dev:build     # Build the playground
+
+# Testing
+npm run test          # Run Vitest tests
+npm run test:watch    # Run tests in watch mode
+npm run test:types    # Type checking
+
+# Linting
+npm run lint          # Run ESLint
+
+# Release
+npm run release       # Build, test, and publish
+```
 
 ## Contribution
 

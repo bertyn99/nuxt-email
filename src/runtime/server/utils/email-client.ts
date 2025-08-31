@@ -1,5 +1,6 @@
 import type { HookBus } from './hook-bus'
 import type { ProviderRegistry } from './provider-registry'
+import type { TemplateRegistry, RenderResult } from './template-registry'
 import { selectProviders, type StrategyMode } from './strategy'
 
 export type EmailAddress = string | { name?: string, email: string }
@@ -58,9 +59,10 @@ type RetryConfig = { maxAttempts: number, backoffMs: number, jitter?: boolean }
 
 export interface EmailClient {
   send: (message: EmailMessage) => Promise<Result<ProviderSendResult>>
+  health: () => Promise<Record<string, { healthy: boolean; error?: unknown }>>
 }
 
-type RenderData = { html?: string, text?: string, subject?: string }
+
 
 type EmailClientConfig = {
   defaults?: { from?: EmailAddress, headers?: Record<string, string> }
@@ -73,7 +75,7 @@ type EmailClientConfig = {
 export const createEmailClient = (
   config: EmailClientConfig,
   providers: ProviderRegistry,
-  templates: { renderTemplate: (name: string, data: unknown) => Promise<Result<RenderData>> },
+  templates: TemplateRegistry,
   hooks: HookBus,
 ): EmailClient => {
   const circuit = new Map<string, { state: 'closed' | 'open', failureCount: number, openedAt?: number }>()
@@ -94,8 +96,10 @@ export const createEmailClient = (
     else circuit.set(name, { state: prev.state, failureCount, openedAt: prev.openedAt })
   }
 
-  return { send: async (message: EmailMessage) => {
-    const normalized = normalizeMessage(message, config.defaults || {})
+    return { 
+    send: async (message: EmailMessage) => {
+      console.log('Email client - sending message:', JSON.stringify(message, null, 2))
+      const normalized = normalizeMessage(message, config.defaults || {})
 
     // Policy: allowlist domains (non-prod by plan, but simple here)
     if (config.security && Array.isArray(config.security.allowlistDomains) && config.security.allowlistDomains.length > 0) {
@@ -125,7 +129,7 @@ export const createEmailClient = (
 
     await hooks.emit('email:beforeRender', { message: normalized, context: { now: Date.now() } } as unknown as Parameters<HookBus['emit']>[1])
 
-    let renderResult: RenderData | undefined
+    let renderResult: RenderResult | undefined
     if (message.template) {
       const render = await templates.renderTemplate(message.template, message.data)
       if (!render.success)
@@ -137,9 +141,11 @@ export const createEmailClient = (
 
     await hooks.emit('email:afterRender', { message: finalMessage, context: { now: Date.now() } } as unknown as Parameters<HookBus['emit']>[1])
 
+    const availableProviders = providers.listProviders().map(String)
+    console.log('Email client - available providers:', availableProviders)
     const selected = selectProviders(
       (config.strategy?.mode || 'primary-fallback') as StrategyMode,
-      providers.listProviders().map(String),
+      availableProviders,
       config.strategy?.weights,
     )
 
@@ -161,7 +167,17 @@ export const createEmailClient = (
     const error = new Error('All providers failed')
     await hooks.emit('email:error', { message: finalMessage, error, attempts: selected.length as unknown as number, context: { now: Date.now() } } as unknown as Parameters<HookBus['emit']>[1])
     return { success: false, error }
-  } }
+  },
+  
+  health: async () => {
+    const healthMap = await providers.healthCheck()
+    const healthObj: Record<string, { healthy: boolean; error?: unknown }> = {}
+    for (const [name, status] of healthMap) {
+      healthObj[name] = status
+    }
+    return healthObj
+  }
+  }
 }
 
 const normalizeMessage = (message: EmailMessage, defaults: { from?: EmailAddress, headers?: Record<string, string> }): NormalizedEmailMessage => ({
@@ -179,7 +195,7 @@ const normalizeMessage = (message: EmailMessage, defaults: { from?: EmailAddress
 
 const mergeRenderResult = (
   message: NormalizedEmailMessage,
-  render?: RenderData,
+  render?: RenderResult,
 ): NormalizedEmailMessage => ({
   ...message,
   html: render?.html || message.html,
