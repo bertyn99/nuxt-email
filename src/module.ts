@@ -1,4 +1,4 @@
-import { defineNuxtModule, addPlugin, createResolver } from '@nuxt/kit'
+import { defineNuxtModule, addPlugin, createResolver, addServerHandler } from '@nuxt/kit'
 
 // Module options TypeScript interface definition
 export interface ModuleOptions {}
@@ -15,5 +15,12 @@ export default defineNuxtModule<ModuleOptions>({
 
     // Do not add the extension since the `.ts` will be transpiled to `.mjs` after `npm run prepack`
     addPlugin(resolver.resolve('./runtime/plugin'))
+
+    // Bridge endpoint (dev/prod configurable later)
+    addServerHandler({
+      route: '/_email/bridge/send',
+      method: 'post',
+      handler: resolver.resolve('./runtime/server/api/_email-bridge/send.post'),
+    })
   },
 })
