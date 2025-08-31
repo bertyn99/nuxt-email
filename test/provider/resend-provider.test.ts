@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-import { createResendProvider } from '../src/runtime/server/providers/resend'
+import { createResendProvider } from '../../src/runtime/server/providers/resend'
 
 describe('Resend provider', () => {
   it('maps normalized message to Resend API and returns result', async () => {

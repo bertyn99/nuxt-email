@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-import { createSmtpProvider } from '../src/runtime/server/providers/smtp'
+import { createSmtpProvider } from '../../src/runtime/server/providers/smtp'
 
 describe('SMTP provider', () => {
   it('maps normalized message to nodemailer and returns result', async () => {

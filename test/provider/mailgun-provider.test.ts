@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-import { createMailgunProvider } from '../src/runtime/server/providers/mailgun'
+import { createMailgunProvider } from '../../src/runtime/server/providers/mailgun'
 
 describe('Mailgun provider', () => {
   it('maps normalized message to Mailgun API and returns result', async () => {

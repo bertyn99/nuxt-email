@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-import { createProviderRegistry } from '../src/runtime/server/utils/provider-registry'
+import { createProviderRegistry } from '../../src/runtime/server/utils/provider-registry'
 
 describe('ProviderRegistry', () => {
   it('adds, gets, lists, and removes providers immutably', () => {

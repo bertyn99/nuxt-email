@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-import { createSendGridProvider } from '../src/runtime/server/providers/sendgrid'
+import { createSendGridProvider } from '../../src/runtime/server/providers/sendgrid'
 
 describe('SendGrid provider', () => {
   it('maps normalized message to SendGrid API and returns result', async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 
-import { createBrevoProvider } from '../src/runtime/server/providers/brevo'
+import { createBrevoProvider } from '../../src/runtime/server/providers/brevo'
 
 type SendInput = {
   from: string
