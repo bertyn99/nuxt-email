@@ -1,4 +1,5 @@
 import { defineNuxtModule, addPlugin, createResolver, addServerHandler, addImportsDir, addServerPlugin } from '@nuxt/kit'
+import { setupDevToolsUI } from './devtools/setup'
 
 // Module options TypeScript interface definition
 export interface ModuleOptions {
@@ -6,22 +7,22 @@ export interface ModuleOptions {
   providers?: {
     resend?: { apiKey: string }
     sendgrid?: { apiKey: string }
-    mailgun?: { apiKey: string; domain: string }
+    mailgun?: { apiKey: string, domain: string }
     brevo?: { apiKey: string }
     smtp?: {
       host: string
       port?: number
       secure?: boolean
-      auth?: { user: string; pass: string }
+      auth?: { user: string, pass: string }
     }
-    mailtrap?: { apiKey: string; inboxId: string }
-    devCatcher?: { enabled?: boolean; dir?: string }
+    mailtrap?: { apiKey: string, inboxId: string }
+    devCatcher?: { enabled: boolean, dir?: string }
   }
   strategy?: {
     mode?: 'primary-fallback' | 'round-robin' | 'weighted'
     weights?: Record<string, number>
-    circuitBreaker?: { failureThreshold: number; cooldownMs: number }
-    retries?: { maxAttempts: number; backoffMs: number; jitter?: boolean }
+    circuitBreaker?: { failureThreshold: number, cooldownMs: number }
+    retries?: { maxAttempts: number, backoffMs: number, jitter?: boolean }
   }
   defaults?: {
     from?: string
@@ -146,9 +147,9 @@ export default defineNuxtModule<ModuleOptions>({
       })
     }
 
-    // DevTools tab (dev only)
-    if (options.devtools?.enabled !== false) {
-      addPlugin(resolver.resolve('./runtime/devtools/tab.client'))
+    // Setup playground. Only available in development
+    if (nuxt.options.dev && options.devtools?.enabled !== false) {
+      setupDevToolsUI(options, resolver.resolve)
     }
   },
 })
