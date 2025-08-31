@@ -37,6 +37,44 @@ npx nuxi module add my-module
 
 That's it! You can now use My Module in your Nuxt app ✨
 
+## Usage (Email)
+
+1) Configure the module in `nuxt.config`:
+
+```ts
+export default defineNuxtConfig({
+  modules: ['@yggdraz/nuxt-email'],
+  email: {
+    defaults: { from: 'no-reply@example.com' },
+    security: { allowlistDomains: ['example.com'] },
+    providers: {
+      devCatcher: { enabled: process.env.NODE_ENV !== 'production' },
+      // smtp: { host: 'smtp.example.com', port: 587, secure: false },
+      // resend: { apiKey: process.env.RESEND_API_KEY },
+      // sendgrid: { apiKey: process.env.SENDGRID_API_KEY },
+      // mailgun: { apiKey: process.env.MAILGUN_API_KEY, domain: 'mg.example.com' },
+      // brevo: { apiKey: process.env.BREVO_API_KEY },
+    },
+  },
+})
+```
+
+2) Send an email from server code:
+
+```ts
+const email = useEmail()
+await email.send({ to: 'user@example.com', subject: 'Hello', html: '<p>Hi</p>' })
+```
+
+3) Optional: client-side sending via the bridge endpoint (disabled by default in production):
+
+```ts
+const email = useEmail()
+await email.send({ to: 'user@example.com', subject: 'Hello', html: '<p>Hi</p>' })
+```
+
+Policies (non-prod allowlist and recipient limits) are enforced on the server via module configuration.
+
 
 ## Contribution
 

@@ -1,10 +1,12 @@
-import { useNuxtApp, useRequestHeaders } from '#app'
+import { useNuxtApp, useRequestHeaders, useRequestEvent } from '#app'
 
 export const useEmail = () => {
   const nuxtApp = useNuxtApp()
-  // On server, we can call directly
+  // On server, call the per-request email client attached by the Nitro plugin
   if (import.meta.server) {
-    return nuxtApp.$email as { send: (body: any) => Promise<any> }
+    const event = useRequestEvent() as any
+    const email = event?.context?.$email || (nuxtApp as any).$email
+    return email as { send: (body: any) => Promise<any> }
   }
   // On client, proxy to bridge endpoint
   return {
