@@ -26,6 +26,7 @@
     "prepack": "nuxt-module-build build",
     "dev": "npm run dev:prepare && nuxi dev playground",
     "dev:build": "nuxi build playground",
+    "client:dev": "nuxi dev src/devtools/client --port 3030",
     "prepare:fixtures": "nuxi prepare test/fixtures/basic",
     "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && nuxi prepare playground && nuxi prepare src/devtools/client && pnpm run prepare:fixtures",
     "release": "npm run lint && npm run test && npm run prepack && changelogen --release && npm publish && git push --follow-tags",
